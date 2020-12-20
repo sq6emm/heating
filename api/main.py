@@ -16,9 +16,10 @@ app = FastAPI(
 @app.get("/heating", tags=["heating"])
 def get_heating():
   sensorsdict = {}
-  sensorsdict['/28.B22793050000'] = 'podloga'
-  sensorsdict['/28.858D94050000'] = 'sciana'
-
+  sensorsdict['28.B22793050000'] = 'main.floor'
+  sensorsdict['28.858D94050000'] = 'main.wall'
+  sensorList = list()
+  heatingList = list()
   host, port = "localhost", 4304
   proxy = protocol.proxy(host, port)
   pid = int(proxy.read('/system/process/pid'))
@@ -28,7 +29,12 @@ def get_heating():
     if stype == "DS18B20":
       temp = float(proxy.read(sensor + '/temperature'))
       temp = "{0:.1f}".format(temp)
-      print(sensorsdict[sensor], sensor, temp)
-      return sensorsdict
+      sid = sensor.strip("/")
+      if sid in sensorsdict:
+        sname = sensorsdict[sid]
+      else:
+        sname = "unknown"
+      sensorList.append({"id":sid, "name":sname, "temp":temp})
   mainheater = OutputDevice(25)
-  print(str(mainheater.value))
+  heatingList.append({"id":"gpio25","name":"main", "status":mainheater.value})
+  return { "sensors": sensorList, "heaters": heatingList }

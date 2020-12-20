@@ -2,7 +2,6 @@
 
 import logging, sys
 from fastapi import FastAPI
-from gpiozero import Motor
 from pyownet import protocol
 from gpiozero import OutputDevice
 

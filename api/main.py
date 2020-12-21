@@ -105,5 +105,5 @@ def post_heating(heat: Heat):
   return { "settings": settingsList, "sensors": sensorList, "heaters": heatingList }
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(job, 'interval', minutes=1)
+scheduler.add_job(job, 'interval', minutes=5)
 scheduler.start()

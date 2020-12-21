@@ -2,8 +2,11 @@
 
 import logging, sys, time
 from fastapi import FastAPI
+from pydantic import BaseModel, conint
+from typing import Optional
+from enum import Enum
 from pyownet import protocol
-from gpiozero import OutputDevice
+from gpiozero import DigitalOutputDevice
 from apscheduler.schedulers.background import BackgroundScheduler
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -14,18 +17,32 @@ app = FastAPI(
   version = "beta"
 )
 
-req_temp = 5
+class HeatCmdEnum(str, Enum):
+    on = 'on'
+    off = 'off'
+
+class Heat(BaseModel):
+    heat_cmd: HeatCmdEnum
+    heat_temp_warm: conint(ge=18, le=25) = None
+    heat_temp_freeze: conint(ge=0, le=10) = None
+
+heat_cmd = "off"
+heat_temp_freeze = 5
+heat_temp_warm = 21
+
+mainheater = DigitalOutputDevice(25)
+mainheater.off()
 
 sensorsdict = {}
 sensorsdict['28.858D94050000'] = 'main.floor'
 sensorsdict['28.B22793050000'] = 'main.wall'
 
 def getTempOfSensor(sname):
-  for i in readTemperature():
+  for i in readSensorsTemp():
     if i.get('name') == sname:
       return float(i.get('temp'))
 
-def readTemperature():
+def readSensorsTemp():
   sensorList = list()
   host, port = "localhost", 4304
   proxy = protocol.proxy(host, port)
@@ -44,17 +61,48 @@ def readTemperature():
       sensorList.append({"id":sid, "name":sname, "temp":temp})
   return sensorList
 
+def readHeating():
+  heatingList = list()
+  if mainheater.value == 0: main_heater="off"
+  if mainheater.value == 1: main_heater="on"
+  heatingList.append({"id":"gpio25","name":"main", "status":main_heater})
+  return heatingList
+
+def readSettings():
+  settingsList = list()
+  settingsList = {"heat_cmd":heat_cmd,"heat_temp_warm":heat_temp_warm, "heat_temp_freeze":heat_temp_freeze}
+  return settingsList
+
 def job():
-  if getTempOfSensor("main.wall") < req_temp:
-    print("powinnismy zaczac grzanie")
+  if heat_cmd == "on":
+    if getTempOfSensor("main.wall") < heat_temp_warm:
+      mainheater.on()
+    else:
+      mainheater.off()
+  else:
+    if getTempOfSensor("main.floor") < heat_temp_freeze:
+      mainheater.on()
+    else:
+      mainheater.off()
 
 @app.get("/heating", tags=["heating"])
 def get_heating():
-  heatingList = list()
-  sensorList = readTemperature()
-#  mainheater = OutputDevice(25)
-#  heatingList.append({"id":"gpio25","name":"main", "status":mainheater.value})
-  return { "sensors": sensorList, "heaters": heatingList }
+  sensorList = readSensorsTemp()
+  heatingList = readHeating()
+  settingsList = readSettings()
+  return { "settings": settingsList, "sensors": sensorList, "heaters": heatingList }
+
+@app.post("/heating", tags=["heating"])
+def post_heating(heat: Heat):
+  global heat_cmd, heat_temp_warm, heat_temp_freeze
+  if heat.heat_cmd: heat_cmd = heat.heat_cmd
+  if heat.heat_temp_warm: heat_temp_warm = heat.heat_temp_warm
+  if heat.heat_temp_freeze: heat_temp_warm = heat.heat_temp_freeze
+  job()
+  sensorList = readSensorsTemp()
+  heatingList = readHeating()
+  settingsList = readSettings()
+  return { "settings": settingsList, "sensors": sensorList, "heaters": heatingList }
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(job, 'interval', minutes=1)

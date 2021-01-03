@@ -27,7 +27,7 @@ class Heat(BaseModel):
     heat_temp_freeze: conint(ge=0, le=10) = None
 
 heat_cmd = "off"
-heat_temp_freeze = 5
+heat_temp_freeze = 10
 heat_temp_warm = 21
 
 mainheater = DigitalOutputDevice(25)
@@ -97,7 +97,7 @@ def post_heating(heat: Heat):
   global heat_cmd, heat_temp_warm, heat_temp_freeze
   if heat.heat_cmd: heat_cmd = heat.heat_cmd
   if heat.heat_temp_warm: heat_temp_warm = heat.heat_temp_warm
-  if heat.heat_temp_freeze: heat_temp_warm = heat.heat_temp_freeze
+  if heat.heat_temp_freeze: heat_temp_freeze = heat.heat_temp_freeze
   job()
   sensorList = readSensorsTemp()
   heatingList = readHeating()

@@ -22,13 +22,13 @@ class HeatCmdEnum(str, Enum):
     off = 'off'
 
 class Heat(BaseModel):
-    heat_cmd: HeatCmdEnum
-    heat_temp_warm: conint(ge=18, le=25) = None
-    heat_temp_freeze: conint(ge=0, le=10) = None
+    heatCmd: HeatCmdEnum
+    heatTempWarm: conint(ge=18, le=25) = None
+    heatTempFreeze: conint(ge=0, le=10) = None
 
-heat_cmd = "off"
-heat_temp_freeze = 10
-heat_temp_warm = 21
+heatCmd = "off"
+heatTempFreeze = 10
+heatTempWarm = 21
 
 mainheater = DigitalOutputDevice(25)
 mainheater.off()
@@ -70,17 +70,17 @@ def readHeating():
 
 def readSettings():
   settingsList = list()
-  settingsList = {"heat_cmd":heat_cmd,"heat_temp_warm":heat_temp_warm, "heat_temp_freeze":heat_temp_freeze}
+  settingsList = {"heatCmd":heatCmd,"heatTempWarm":heatTempWarm, "heatTempFreeze":heatTempFreeze}
   return settingsList
 
 def job():
-  if heat_cmd == "on":
-    if getTempOfSensor("main.wall") < heat_temp_warm:
+  if heatCmd == "on":
+    if getTempOfSensor("main.wall") < heatTempWarm:
       mainheater.on()
     else:
       mainheater.off()
   else:
-    if getTempOfSensor("main.floor") < heat_temp_freeze:
+    if getTempOfSensor("main.floor") < heatTempFreeze:
       mainheater.on()
     else:
       mainheater.off()
@@ -94,10 +94,10 @@ def get_heating():
 
 @app.post("/heating", tags=["heating"])
 def post_heating(heat: Heat):
-  global heat_cmd, heat_temp_warm, heat_temp_freeze
-  if heat.heat_cmd: heat_cmd = heat.heat_cmd
-  if heat.heat_temp_warm: heat_temp_warm = heat.heat_temp_warm
-  if heat.heat_temp_freeze: heat_temp_freeze = heat.heat_temp_freeze
+  global heatCmd, heatTempWarm, heatTempFreeze
+  if heat.heatCmd: heatCmd = heat.heatCmd
+  if heat.heatTempWarm: heatTempWarm = heat.heatTempWarm
+  if heat.heatTempFreeze: heatTempFreeze = heat.heatTempFreeze
   job()
   sensorList = readSensorsTemp()
   heatingList = readHeating()
